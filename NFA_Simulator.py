@@ -1,0 +1,179 @@
+import asyncio
+
+num_states = int(input())
+num_transitions = int(input())
+
+node_list: dict[str, dict[str, list[tuple[str, bool]]]] = {}
+
+transition_set = set()
+
+for i in range(num_transitions):
+    nodefrom, transition, nodeto = input().split()
+    epsilon_transition = False
+    if transition == "eps":
+        epsilon_transition = True
+    else:
+        transition_set.add(transition)
+    # If the key exists in the dictionary
+    if nodefrom in node_list:
+        if transition in node_list[nodefrom]:
+            node_list[nodefrom][transition].append((nodeto, epsilon_transition))
+        else:
+            node_list[nodefrom][transition] = [(nodeto, epsilon_transition)]
+    else:
+        node_list[nodefrom] = {transition: [(nodeto, epsilon_transition)]}
+
+num_final_states = int(input())
+
+final_states = set()
+
+for i in range(num_final_states):
+    final_states.add(input())
+
+num_given_strings = int(input())
+
+async def NFA_simulator(input_string: str, curr_state: str):
+    
+
+    tasks = []
+    # end_state_found = False
+
+    if not input_string:
+        # return_states = [curr_state]
+        if node_list.get(curr_state, False):
+            temp = node_list[curr_state].get("eps", False)
+            if temp:
+                potential_epsilon_states = temp
+
+
+                for epsilon_state in potential_epsilon_states:
+                    task = asyncio.create_task(NFA_simulator(input_string, epsilon_state[0]))
+                    tasks.append(task)
+
+                    # for potential_end_state in potential_end_states:
+                    #     if potential_end_state in final_states:
+                    #         return_states = [potential_end_state]
+                    #         end_state_found = True
+                    #         break
+
+                    # if end_state_found:
+                    #     break
+
+                    # return_states += potential_end_state
+            else:
+                return [curr_state]
+        else:
+            return [curr_state]
+    else:
+        potential_states: list[tuple[str, bool]] = []
+
+        if node_list.get(curr_state, False):
+            temp = node_list[curr_state].get("eps", False)
+            if temp:
+                potential_states += temp
+            
+            temp = node_list[curr_state].get(input_string[0], False)
+            if temp:
+                potential_states += node_list[curr_state][input_string[0]]
+
+
+
+        for state in potential_states:
+            # Is this an epsilon transition?
+
+            if not state[1]:
+                task = asyncio.create_task(NFA_simulator(input_string[1:], state[0]))
+                tasks.append(task)
+            else:
+                task = asyncio.create_task(NFA_simulator(input_string, state[0]))
+                tasks.append(task)
+
+            # for potential_end_state in temp:
+            #     if potential_end_state in final_states:
+            #         return_states = [potential_end_state]
+            #         end_state_found = True
+            #         break
+            
+            # if end_state_found:
+            #     break
+
+            # return_states += temp
+
+    results = await asyncio.gather(*tasks)
+
+    aaaa = []
+    for item in results:
+        aaaa.extend(item)
+
+    return aaaa
+
+# Convert the NFA into a DFA to hopefully speed everything up
+
+DFA_node_list: dict[str, dict[str, list[tuple[str, bool]]]]  = {} # not using the tuple or the list but I don't feel like making the necessary changes to NFA_simulator to allow for that
+
+def NFA_to_DFA_inator(curr_state: str = "0"):
+
+    
+    # I know each transtion is one character which is why this works
+    unflattened_states = curr_state.split("_")
+
+    flattened_state_dict: dict[str, set[str]] = {}
+
+    for state in unflattened_states:
+        curr_node = node_list.get(state)
+        if curr_node is not None:
+            for transition in curr_node:
+                #print(transition)
+                if not transition == "eps": # Ignoring epsilon transitions because NFA_simulator should handle those
+
+                    if DFA_node_list.get(curr_state) is None:
+                        DFA_node_list[curr_state] = {}
+
+                    possible_state_list = asyncio.run(NFA_simulator(transition, state)) # Get possible states from here, cant get them from node list because of epsilon transitions
+                    #print(possible_state_list)
+                    flattened_states: set[str] = set()
+                    for possible_state in possible_state_list:
+                        flattened_states.add(possible_state[0])
+                    
+                    # Needs to be sorted so that if other nodes output this combined node as a possible state then they point to the same node
+                    # flattened_states = ''.join(sorted(flattened_states))
+
+                    if flattened_state_dict.get(transition) is not None:
+                        # flattened_state_dict[transition] = ''.join(sorted(flattened_states + flattened_state_dict[transition]))
+                        flattened_state_dict[transition].update(flattened_states)
+                    else:
+                        flattened_state_dict[transition] = flattened_states
+
+    for dict_transtion in flattened_state_dict:
+        flattened_str = '_'.join(sorted(flattened_state_dict[dict_transtion]))
+        if DFA_node_list[curr_state].get(dict_transtion) is None:
+            DFA_node_list[curr_state][dict_transtion] = [(flattened_str, False)]
+            #print(flattened_state_dict[dict_transtion])
+            NFA_to_DFA_inator(flattened_str)
+        
+NFA_to_DFA_inator()
+node_list = DFA_node_list
+#print("vibe check")
+
+for i in range(num_given_strings):
+    input_string = input()
+
+    accepted = False
+    #print("vibe check")
+    for end_state in asyncio.run(NFA_simulator(input_string, "0")):
+        #print(end_state)
+        split_states = end_state.split("_")
+        for result_state in split_states:
+            if result_state in final_states:
+                accepted = True
+                break
+
+    if accepted:
+        print("accept")
+    else:
+        print("reject")
+
+# for node in node_list:
+#     for transition in node_list[node]:
+#         for result_node in node_list[node][transition]:
+#             print(f"{node}: {transition}: {result_node[0]}")
