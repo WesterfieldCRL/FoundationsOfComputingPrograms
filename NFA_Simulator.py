@@ -1,4 +1,5 @@
 import asyncio
+from functools import lru_cache
 
 num_states = int(input())
 num_transitions = int(input())
@@ -35,40 +36,27 @@ for i in range(num_final_states):
 
 num_given_strings = int(input())
 
-async def NFA_simulator(input_string: str, curr_state: str):
+@lru_cache(maxsize=num_states*10)
+def NFA_simulator(input_string: str, curr_state: str) -> list[str]:
     
 
-    tasks = []
-    # end_state_found = False
+    return_states = []
 
     if not input_string:
-        # return_states = [curr_state]
+        return_states = [curr_state]
         if node_list.get(curr_state, False):
             temp = node_list[curr_state].get("eps", False)
             if temp:
                 potential_epsilon_states = temp
 
-
                 for epsilon_state in potential_epsilon_states:
-                    task = asyncio.create_task(NFA_simulator(input_string, epsilon_state[0]))
-                    tasks.append(task)
+                    potential_end_states = NFA_simulator(input_string, epsilon_state[0])
 
-                    # for potential_end_state in potential_end_states:
-                    #     if potential_end_state in final_states:
-                    #         return_states = [potential_end_state]
-                    #         end_state_found = True
-                    #         break
 
-                    # if end_state_found:
-                    #     break
+                    return_states += potential_end_states
 
-                    # return_states += potential_end_state
-            else:
-                return [curr_state]
-        else:
-            return [curr_state]
     else:
-        potential_states: list[tuple[str, bool]] = []
+        potential_states = []
 
         if node_list.get(curr_state, False):
             temp = node_list[curr_state].get("eps", False)
@@ -78,37 +66,22 @@ async def NFA_simulator(input_string: str, curr_state: str):
             temp = node_list[curr_state].get(input_string[0], False)
             if temp:
                 potential_states += node_list[curr_state][input_string[0]]
-
-
-
+                
         for state in potential_states:
             # Is this an epsilon transition?
 
+            temp = []
+
             if not state[1]:
-                task = asyncio.create_task(NFA_simulator(input_string[1:], state[0]))
-                tasks.append(task)
+                temp = NFA_simulator(input_string[1:], state[0])
             else:
-                task = asyncio.create_task(NFA_simulator(input_string, state[0]))
-                tasks.append(task)
-
-            # for potential_end_state in temp:
-            #     if potential_end_state in final_states:
-            #         return_states = [potential_end_state]
-            #         end_state_found = True
-            #         break
+                temp = NFA_simulator(input_string, state[0])
             
-            # if end_state_found:
-            #     break
 
-            # return_states += temp
+            return_states += temp
+        
 
-    results = await asyncio.gather(*tasks)
-
-    aaaa = []
-    for item in results:
-        aaaa.extend(item)
-
-    return aaaa
+    return return_states
 
 # Convert the NFA into a DFA to hopefully speed everything up
 
@@ -132,7 +105,7 @@ def NFA_to_DFA_inator(curr_state: str = "0"):
                     if DFA_node_list.get(curr_state) is None:
                         DFA_node_list[curr_state] = {}
 
-                    possible_state_list = asyncio.run(NFA_simulator(transition, state)) # Get possible states from here, cant get them from node list because of epsilon transitions
+                    possible_state_list = NFA_simulator(transition, state) # Get possible states from here, cant get them from node list because of epsilon transitions
                     #print(possible_state_list)
                     flattened_states: set[str] = set()
                     for possible_state in possible_state_list:
@@ -163,7 +136,7 @@ for i in range(num_given_strings):
 
     accepted = False
     #print("vibe check")
-    for end_state in asyncio.run(NFA_simulator(input_string, "0")):
+    for end_state in NFA_simulator(input_string, "0"):
         #print(end_state)
         split_states = end_state.split("_")
         for result_state in split_states:
