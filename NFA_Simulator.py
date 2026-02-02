@@ -7,6 +7,8 @@ node_list: dict[str, dict[str, list[tuple[str, bool]]]] = {}
 
 transition_set = set()
 
+is_NFA = False
+
 for i in range(num_transitions):
     nodefrom, transition, nodeto = input().split()
     epsilon_transition = False
@@ -17,6 +19,7 @@ for i in range(num_transitions):
     # If the key exists in the dictionary
     if nodefrom in node_list:
         if transition in node_list[nodefrom]:
+            is_NFA = True
             node_list[nodefrom][transition].append((nodeto, epsilon_transition))
         else:
             node_list[nodefrom][transition] = [(nodeto, epsilon_transition)]
@@ -133,7 +136,7 @@ def NFA_to_DFA_inator(curr_state: str = "0"):
                     #print(possible_state_list)
                     flattened_states: set[str] = set()
                     for possible_state in possible_state_list:
-                        flattened_states.add(possible_state[0])
+                        flattened_states.add(possible_state)
                     
                     # Needs to be sorted so that if other nodes output this combined node as a possible state then they point to the same node
                     # flattened_states = ''.join(sorted(flattened_states))
@@ -151,9 +154,9 @@ def NFA_to_DFA_inator(curr_state: str = "0"):
             #print(flattened_state_dict[dict_transtion])
             NFA_to_DFA_inator(flattened_str)
         
-NFA_to_DFA_inator()
-node_list = DFA_node_list
-#print("vibe check")
+if is_NFA:
+    NFA_to_DFA_inator()
+    node_list = DFA_node_list
 
 for i in range(num_given_strings):
     input_string = input()
