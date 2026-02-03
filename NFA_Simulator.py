@@ -32,11 +32,20 @@ for i in range(num_final_states):
 
 num_given_strings = int(input())
 
-@lru_cache(maxsize=num_states*10)
-def NFA_simulator(input_string: str, curr_state: str) -> list[str]:
+#@lru_cache(maxsize=num_states*10)
+def NFA_simulator(input_string: str, curr_state: str, visited_states: set[str] = None) -> list[str]:
     
+    if visited_states is None:
+        visited_states = set()
 
     return_states = []
+    #print(f"curr_state = {curr_state}, input = {input_string}")
+    if curr_state in visited_states:
+        #print(f"{curr_state}, {visited_states}")
+        return [curr_state]
+    else:
+        #print(f"{curr_state}, {visited_states}")
+        visited_states.add(curr_state)
 
     if not input_string:
         return_states = [curr_state]
@@ -46,15 +55,15 @@ def NFA_simulator(input_string: str, curr_state: str) -> list[str]:
                 potential_epsilon_states = temp
 
                 for epsilon_state in potential_epsilon_states:
-                    potential_end_states = NFA_simulator(input_string, epsilon_state[0])
+                    potential_end_states = NFA_simulator(input_string, epsilon_state[0], visited_states)
 
 
                     return_states += potential_end_states
-
     else:
         potential_states = []
 
         if node_list.get(curr_state, False):
+            
             temp = node_list[curr_state].get("eps", False)
             if temp:
                 potential_states += temp
@@ -72,7 +81,7 @@ def NFA_simulator(input_string: str, curr_state: str) -> list[str]:
                 temp = NFA_simulator(input_string[1:], state[0])
             else:
                 # Need to check if already added this node to possible states
-                temp = NFA_simulator(input_string, state[0])
+                temp = NFA_simulator(input_string, state[0], visited_states)
             
 
             return_states += temp
@@ -139,7 +148,7 @@ for i in range(num_given_strings):
     accepted = False
     #print("vibe check")
     for end_state in NFA_simulator(input_string, flattened_start_states):
-        print(end_state)
+        #print(f"end_state = {end_state}")
         split_states = end_state.split("_")
         for result_state in split_states:
             if result_state in final_states:
@@ -151,7 +160,7 @@ for i in range(num_given_strings):
     else:
         print("reject")
 
-for node in node_list:
-    for transition in node_list[node]:
-        for result_node in node_list[node][transition]:
-            print(f"{node}: {transition}: {result_node[0]}")
+# for node in node_list:
+#     for transition in node_list[node]:
+#         for result_node in node_list[node][transition]:
+#             print(f"{node}: {transition}: {result_node[0]}")
