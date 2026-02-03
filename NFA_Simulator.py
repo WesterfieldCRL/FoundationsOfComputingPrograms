@@ -1,4 +1,3 @@
-import asyncio
 from functools import lru_cache
 
 num_states = int(input())
@@ -7,8 +6,6 @@ num_transitions = int(input())
 node_list: dict[str, dict[str, list[tuple[str, bool]]]] = {}
 
 transition_set = set()
-
-is_NFA = False
 
 for i in range(num_transitions):
     nodefrom, transition, nodeto = input().split()
@@ -20,7 +17,6 @@ for i in range(num_transitions):
     # If the key exists in the dictionary
     if nodefrom in node_list:
         if transition in node_list[nodefrom]:
-            is_NFA = True
             node_list[nodefrom][transition].append((nodeto, epsilon_transition))
         else:
             node_list[nodefrom][transition] = [(nodeto, epsilon_transition)]
@@ -75,6 +71,7 @@ def NFA_simulator(input_string: str, curr_state: str) -> list[str]:
             if not state[1]:
                 temp = NFA_simulator(input_string[1:], state[0])
             else:
+                # Need to check if already added this node to possible states
                 temp = NFA_simulator(input_string, state[0])
             
 
@@ -127,17 +124,22 @@ def NFA_to_DFA_inator(curr_state: str = "0"):
             #print(flattened_state_dict[dict_transtion])
             NFA_to_DFA_inator(flattened_str)
         
-if is_NFA:
-    NFA_to_DFA_inator()
-    node_list = DFA_node_list
+
+# Handle start state in case of epsilon on start state
+possible_start_states = NFA_simulator("", "0")
+
+flattened_start_states = '_'.join(sorted(possible_start_states))
+
+NFA_to_DFA_inator(flattened_start_states)
+node_list = DFA_node_list
 
 for i in range(num_given_strings):
     input_string = input()
 
     accepted = False
     #print("vibe check")
-    for end_state in NFA_simulator(input_string, "0"):
-        #print(end_state)
+    for end_state in NFA_simulator(input_string, flattened_start_states):
+        print(end_state)
         split_states = end_state.split("_")
         for result_state in split_states:
             if result_state in final_states:
@@ -149,7 +151,7 @@ for i in range(num_given_strings):
     else:
         print("reject")
 
-# for node in node_list:
-#     for transition in node_list[node]:
-#         for result_node in node_list[node][transition]:
-#             print(f"{node}: {transition}: {result_node[0]}")
+for node in node_list:
+    for transition in node_list[node]:
+        for result_node in node_list[node][transition]:
+            print(f"{node}: {transition}: {result_node[0]}")
