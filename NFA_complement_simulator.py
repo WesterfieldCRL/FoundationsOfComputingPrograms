@@ -217,7 +217,8 @@ sorted_transitions_list = sorted(set_of_all_transitions)
 print_list = []
 
 # print transitions
-for state in DFA_node_list:
+for state in set_of_all_states:
+
     from_state = state
     renamed_from_state = renamed_states.get(from_state)
     if renamed_from_state is not None:
@@ -230,8 +231,8 @@ for state in DFA_node_list:
 
 
     for transition in sorted_transitions_list:
-        to_state = DFA_node_list[state].get(transition)
-        if to_state is not None:
+        if DFA_node_list.get(state) is not None and DFA_node_list[state].get(transition) is not None:
+            to_state = DFA_node_list[state][transition]
             renamed_to_state = renamed_states.get(to_state)
             if renamed_to_state is not None:
                 to_state = renamed_to_state
