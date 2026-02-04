@@ -203,19 +203,34 @@ NFA_to_DFA_inator(flattened_start_states)
 print(len(set_of_all_states))
 print(sum(len(inner) for inner in DFA_node_list.values()))
 
-#print transitions
+renamed_states: dict[str, str] = {}
+renamed_states[flattened_start_states] = "0"
+
+renaming_index = 0
+
+# print transitions
 for state in DFA_node_list:
     from_state = state
-    if from_state == flattened_start_states and not from_state == 0:
-        from_state = 0
+    renamed_from_state = renamed_states.get(from_state)
+    if renamed_from_state is not None:
+        from_state = renamed_from_state
     else:
-        from_state = from_state.replace("_", "")
+        renaming_index += 1
+        new_from_state = str(renaming_index)
+        renamed_states[from_state] = new_from_state
+        from_state = new_from_state
+
+
     for transition in DFA_node_list[state]:
         to_state = DFA_node_list[state][transition]
-        if to_state == flattened_start_states and not to_state == 0:
-            to_state = 0
+        renamed_to_state = renamed_states.get(to_state)
+        if renamed_to_state is not None:
+            to_state = renamed_to_state
         else:
-            to_state = to_state.replace("_", "")
+            renaming_index += 1
+            new_to_state = str(renaming_index)
+            renamed_states[to_state] = new_to_state
+            to_state = new_to_state
 
         print(f"{from_state} {transition} {to_state}")
 
@@ -232,5 +247,4 @@ for state in set_of_all_states:
 
 print(len(set_of_final_states))
 for state in set_of_final_states:
-    cleaned_state = state.replace("_", "")
-    print(cleaned_state)
+    print(renamed_states[state])
