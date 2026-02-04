@@ -1,13 +1,21 @@
-3
-3
+4
+8
+0 a 0
+0 b 0
 0 a 1
-1 eps 0
-1 eps 2
+0 b 2
+1 a 3
+2 b 3
+3 a 3
+3 b 3
 1
-2
-5
+3
+7
+aa
+bb
+abababababab
+babababababa
+bababaababab
+babababbabab
+aaaaabbbbb
 
-a
-b
-aaaaa
-aaaaab

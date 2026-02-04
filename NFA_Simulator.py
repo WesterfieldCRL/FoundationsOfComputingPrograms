@@ -7,13 +7,10 @@ node_list: dict[str, dict[str, list[tuple[str, bool]]]] = {}
 
 transition_set = set()
 
-contains_epsilon_transitions = False
-
 for i in range(num_transitions):
     nodefrom, transition, nodeto = input().split()
     epsilon_transition = False
     if transition == "eps":
-        contains_epsilon_transitions = True
         epsilon_transition = True
     else:
         transition_set.add(transition)
@@ -35,54 +32,7 @@ for i in range(num_final_states):
 
 num_given_strings = int(input())
 
-@lru_cache(maxsize=num_states*10)
-def NFA_simulator(input_string: str, curr_state: str) -> list[str]:
-    
-    return_states = []
-
-    if not input_string:
-        return_states = [curr_state]
-        if node_list.get(curr_state, False):
-            temp = node_list[curr_state].get("eps", False)
-            if temp:
-                potential_epsilon_states = temp
-
-                for epsilon_state in potential_epsilon_states:
-                    potential_end_states = NFA_simulator(input_string, epsilon_state[0])
-
-
-                    return_states += potential_end_states
-    else:
-        potential_states = []
-
-        if node_list.get(curr_state, False):
-            
-            temp = node_list[curr_state].get("eps", False)
-            if temp:
-                potential_states += temp
-            
-            temp = node_list[curr_state].get(input_string[0], False)
-            if temp:
-                potential_states += node_list[curr_state][input_string[0]]
-                
-        for state in potential_states:
-            # Is this an epsilon transition?
-
-            temp = []
-
-            if not state[1]:
-                temp = NFA_simulator(input_string[1:], state[0])
-            else:
-                # Need to check if already added this node to possible states
-                temp = NFA_simulator(input_string, state[0])
-            
-
-            return_states += temp
-        
-
-    return return_states
-
-def NFA_simulator_with_epsilons_and_knuckles(input_string: str, curr_state: str, visited_states: set[str] = None):
+def NFA_simulator(input_string: str, curr_state: str, visited_states: set[str] | None = None) -> list[str]:
 
     if visited_states is None:
         visited_states = set()
@@ -100,12 +50,11 @@ def NFA_simulator_with_epsilons_and_knuckles(input_string: str, curr_state: str,
     if not input_string:
         return_states = [curr_state]
         if node_list.get(curr_state, False):
-            temp = node_list[curr_state].get("eps", False)
-            if temp:
-                potential_epsilon_states = temp
+            potential_epsilon_states = node_list[curr_state].get("eps")
+            if potential_epsilon_states is not None:
 
                 for epsilon_state in potential_epsilon_states:
-                    potential_end_states = NFA_simulator_with_epsilons_and_knuckles(input_string, epsilon_state[0], visited_states)
+                    potential_end_states = NFA_simulator(input_string, epsilon_state[0], visited_states)
 
 
                     return_states += potential_end_states
@@ -114,8 +63,8 @@ def NFA_simulator_with_epsilons_and_knuckles(input_string: str, curr_state: str,
 
         if node_list.get(curr_state, False):
             
-            temp = node_list[curr_state].get("eps", False)
-            if temp:
+            temp = node_list[curr_state].get("eps")
+            if temp is not None:
                 potential_states += temp
             
             temp = node_list[curr_state].get(input_string[0], False)
@@ -128,10 +77,10 @@ def NFA_simulator_with_epsilons_and_knuckles(input_string: str, curr_state: str,
             temp = []
 
             if not state[1]:
-                temp = NFA_simulator_with_epsilons_and_knuckles(input_string[1:], state[0])
+                temp = NFA_simulator(input_string[1:], state[0])
             else:
                 # Need to check if already added this node to possible states
-                temp = NFA_simulator_with_epsilons_and_knuckles(input_string, state[0], visited_states)
+                temp = NFA_simulator(input_string, state[0], visited_states)
             
 
             return_states += temp
@@ -161,10 +110,7 @@ def NFA_to_DFA_inator(curr_state: str = "0"):
                     if DFA_node_list.get(curr_state) is None:
                         DFA_node_list[curr_state] = {}
 
-                    if not contains_epsilon_transitions:
-                        possible_state_list = NFA_simulator(transition, state)
-                    else:
-                        possible_state_list = NFA_simulator_with_epsilons_and_knuckles(transition, state)
+                    possible_state_list = NFA_simulator(transition, state)
                     #print(possible_state_list)
                     flattened_states: set[str] = set()
                     for possible_state in possible_state_list:
@@ -187,38 +133,26 @@ def NFA_to_DFA_inator(curr_state: str = "0"):
             NFA_to_DFA_inator(flattened_str)
         
 
-# Handle start state in case of epsilon on start state
-if not contains_epsilon_transitions:
-    possible_start_states = NFA_simulator("", "0")
-else:
-    possible_start_states = NFA_simulator_with_epsilons_and_knuckles("", "0")
+possible_start_states = NFA_simulator("", "0")
 
 flattened_start_states = '_'.join(sorted(possible_start_states))
 
 NFA_to_DFA_inator(flattened_start_states)
 node_list = DFA_node_list
 
+# print(node_list)
+
 for i in range(num_given_strings):
     input_string = input()
 
     accepted = False
-    #print("vibe check")
-    if not contains_epsilon_transitions:
-        for end_state in NFA_simulator(input_string, flattened_start_states):
-            #print(f"end_state = {end_state}")
-            split_states = end_state.split("_")
-            for result_state in split_states:
-                if result_state in final_states:
-                    accepted = True
-                    break
-    else:
-        for end_state in NFA_simulator_with_epsilons_and_knuckles(input_string, flattened_start_states):
-            #print(f"end_state = {end_state}")
-            split_states = end_state.split("_")
-            for result_state in split_states:
-                if result_state in final_states:
-                    accepted = True
-                    break
+    for end_state in NFA_simulator(input_string, flattened_start_states):
+        #print(f"end_state = {end_state}")
+        split_states = end_state.split("_")
+        for result_state in split_states:
+            if result_state in final_states:
+                accepted = True
+                break
 
     if accepted:
         print("accept")
