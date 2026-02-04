@@ -7,6 +7,8 @@ node_list: dict[str, dict[str, list[tuple[str, bool]]]] = {}
 
 transition_set = set()
 
+set_of_all_transitions = set()
+
 contains_epsilon_transitions = False
 
 for i in range(num_transitions):
@@ -16,6 +18,7 @@ for i in range(num_transitions):
         contains_epsilon_transitions = True
         epsilon_transition = True
     else:
+        set_of_all_transitions.add(transition)
         transition_set.add(transition)
     # If the key exists in the dictionary
     if nodefrom in node_list:
@@ -200,13 +203,18 @@ flattened_start_states = '_'.join(sorted(possible_start_states))
 NFA_to_DFA_inator(flattened_start_states)
 #node_list = DFA_node_list
 
-print(len(set_of_all_states))
-print(sum(len(inner) for inner in DFA_node_list.values()))
+number_of_states = len(set_of_all_states)
+#print(number_of_states)
+#print(sum(len(inner) for inner in DFA_node_list.values()))
 
 renamed_states: dict[str, str] = {}
 renamed_states[flattened_start_states] = "0"
 
 renaming_index = 0
+
+sorted_transitions_list = sorted(set_of_all_transitions)
+
+print_list = []
 
 # print transitions
 for state in DFA_node_list:
@@ -221,18 +229,42 @@ for state in DFA_node_list:
         from_state = new_from_state
 
 
-    for transition in DFA_node_list[state]:
-        to_state = DFA_node_list[state][transition]
-        renamed_to_state = renamed_states.get(to_state)
-        if renamed_to_state is not None:
-            to_state = renamed_to_state
-        else:
-            renaming_index += 1
-            new_to_state = str(renaming_index)
-            renamed_states[to_state] = new_to_state
-            to_state = new_to_state
+    for transition in sorted_transitions_list:
+        to_state = DFA_node_list[state].get(transition)
+        if to_state is not None:
+            renamed_to_state = renamed_states.get(to_state)
+            if renamed_to_state is not None:
+                to_state = renamed_to_state
+            else:
+                renaming_index += 1
+                new_to_state = str(renaming_index)
+                renamed_states[to_state] = new_to_state
+                to_state = new_to_state
 
-        print(f"{from_state} {transition} {to_state}")
+            print_list.append(f"{from_state} {transition} {to_state}")
+        else:
+            renamed_sink_state = renamed_states.get("sink")
+            if renamed_sink_state is not None:
+                print_list.append(f"{from_state} {transition} {renamed_sink_state}")
+            else:
+                renaming_index += 1
+                new_sink_state = str(renaming_index)
+                renamed_states["sink"] = new_sink_state
+                print_list.append(f"{from_state} {transition} {new_sink_state}")
+
+print_sink = renamed_states.get("sink")
+if print_sink is not None:
+    for transition in set_of_all_transitions:
+        print_list.append(f"{print_sink} {transition} {print_sink}")
+    print(number_of_states + 1)
+else:
+    print(number_of_states)
+print_list.sort()
+
+print(len(print_list))
+
+for item in print_list:
+    print(item)
 
 set_of_final_states = set()
 for state in set_of_all_states:
@@ -245,6 +277,18 @@ for state in set_of_all_states:
     if not contains_final_state:
         set_of_final_states.add(state)
 
-print(len(set_of_final_states))
+
+if print_sink is not None:
+    set_of_final_states.add("sink")
+
+sorted_final_states = []
 for state in set_of_final_states:
-    print(renamed_states[state])
+    sorted_final_states.append(renamed_states[state])
+
+sorted_final_states.sort()
+print(len(set_of_final_states))
+for state in sorted_final_states:
+    print(state)
+
+
+
