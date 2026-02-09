@@ -1,33 +1,26 @@
-from functools import lru_cache
-
 num_states = int(input())
 num_transitions = int(input())
 
-node_list: dict[str, dict[str, list[tuple[str, bool]]]] = {}
+node_list: dict[str, dict[str, set[str]]] = {}
 
 transition_set = set()
 
 set_of_all_transitions = set()
 
-contains_epsilon_transitions = False
-
 for i in range(num_transitions):
     nodefrom, transition, nodeto = input().split()
-    epsilon_transition = False
-    if transition == "eps":
-        contains_epsilon_transitions = True
-        epsilon_transition = True
-    else:
-        set_of_all_transitions.add(transition)
-        transition_set.add(transition)
+    # transition_set.add(transition)
     # If the key exists in the dictionary
+    if not transition == "eps":
+        set_of_all_transitions.add(transition)
+
     if nodefrom in node_list:
         if transition in node_list[nodefrom]:
-            node_list[nodefrom][transition].append((nodeto, epsilon_transition))
+            node_list[nodefrom][transition].add(nodeto)
         else:
-            node_list[nodefrom][transition] = [(nodeto, epsilon_transition)]
+            node_list[nodefrom][transition] = {nodeto}
     else:
-        node_list[nodefrom] = {transition: [(nodeto, epsilon_transition)]}
+        node_list[nodefrom] = {transition: {nodeto}}
 
 num_final_states = int(input())
 
@@ -36,113 +29,44 @@ final_states = set()
 for i in range(num_final_states):
     final_states.add(input())
 
-@lru_cache(maxsize=num_states*10)
-def NFA_simulator(input_string: str, curr_state: str) -> list[str]:
+
+def epsilon_handler(curr_state: str) -> set[str]:
     
-    return_states = []
+    new_nodes = [curr_state]
+    for state in new_nodes:
+        curr_node = node_list.get(state)
+        if curr_node is not None:
+            epsilon_transitions = curr_node.get("eps", set())
+            #return_set = return_set.union(epsilon_transitions)
+            for new_node in epsilon_transitions:
+                if new_node not in new_nodes:
+                    new_nodes.append(new_node)
+
+
+    return set(new_nodes)
+
+def NFA_simulator(input_string: str, curr_state: str) -> set[str]:
+
+    return_states = set()
+    potential_states = set()
+
+    curr_state_with_epsilon_expansion = epsilon_handler(curr_state)
 
     if not input_string:
-        return_states = [curr_state]
-        if node_list.get(curr_state, False):
-            temp = node_list[curr_state].get("eps", False)
-            if temp:
-                potential_epsilon_states = temp
-
-                for epsilon_state in potential_epsilon_states:
-                    potential_end_states = NFA_simulator(input_string, epsilon_state[0])
-
-
-                    return_states += potential_end_states
+        return_states = curr_state_with_epsilon_expansion
     else:
-        potential_states = []
-
-        if node_list.get(curr_state, False):
-            
-            temp = node_list[curr_state].get("eps", False)
-            if temp:
-                potential_states += temp
-            
-            temp = node_list[curr_state].get(input_string[0], False)
-            if temp:
-                potential_states += node_list[curr_state][input_string[0]]
-                
-        for state in potential_states:
-            # Is this an epsilon transition?
-
-            temp = []
-
-            if not state[1]:
-                temp = NFA_simulator(input_string[1:], state[0])
-            else:
-                # Need to check if already added this node to possible states
-                temp = NFA_simulator(input_string, state[0])
-            
-
-            return_states += temp
-        
-
-    return return_states
-
-def NFA_simulator_with_epsilons_and_knuckles(input_string: str, curr_state: str, visited_states: set[str] = None):
-
-    if visited_states is None:
-        visited_states = set()
-
-    #print(f"curr_state = {curr_state}, input = {input_string}")
-    if curr_state in visited_states:
-        #print(f"{curr_state}, {visited_states}")
-        return []
-    else:
-        #print(f"{curr_state}, {visited_states}")
-        visited_states.add(curr_state)
-
-    return_states = []
-
-    if not input_string:
-        return_states = [curr_state]
-        if node_list.get(curr_state, False):
-            temp = node_list[curr_state].get("eps", False)
-            if temp:
-                potential_epsilon_states = temp
-
-                for epsilon_state in potential_epsilon_states:
-                    potential_end_states = NFA_simulator_with_epsilons_and_knuckles(input_string, epsilon_state[0], visited_states)
-
-
-                    return_states += potential_end_states
-    else:
-        potential_states = []
-
-        if node_list.get(curr_state, False):
-            
-            temp = node_list[curr_state].get("eps", False)
-            if temp:
-                potential_states += temp
-            
-            temp = node_list[curr_state].get(input_string[0], False)
-            if temp:
-                potential_states += node_list[curr_state][input_string[0]]
-                
-        for state in potential_states:
-            # Is this an epsilon transition?
-
-            temp = []
-
-            if not state[1]:
-                temp = NFA_simulator_with_epsilons_and_knuckles(input_string[1:], state[0])
-            else:
-                # Need to check if already added this node to possible states
-                temp = NFA_simulator_with_epsilons_and_knuckles(input_string, state[0], visited_states)
-            
-
-            return_states += temp
-        
+        for curr_state_expanded in curr_state_with_epsilon_expansion:
+            if not ((node_list.get(curr_state_expanded) is None) or (node_list[curr_state_expanded].get(input_string[0]) is None)):
+                potential_states = potential_states.union(node_list[curr_state_expanded][input_string[0]])
+    
+    for state in potential_states:
+        return_states = return_states.union(NFA_simulator(input_string[1:], state))
 
     return return_states
 
 # Convert the NFA into a DFA to hopefully speed everything up
 
-DFA_node_list: dict[str, dict[str, str]]  = {} # not using the tuple or the list but I don't feel like making the necessary changes to NFA_simulator to allow for that
+DFA_node_list: dict[str, dict[str, set[str]]]  = {} # not using the list but I don't feel like making the necessary changes to NFA_simulator to allow for that
 
 set_of_all_states = set()
 
@@ -158,17 +82,14 @@ def NFA_to_DFA_inator(curr_state: str = "0"):
         curr_node = node_list.get(state)
         if curr_node is not None:
             for transition in curr_node:
-                #print(transition)
+                #print(f"{transition} in {state}")
                 if not transition == "eps": # Ignoring epsilon transitions because NFA_simulator should handle those
 
                     if DFA_node_list.get(curr_state) is None:
                         set_of_all_states.add(curr_state)
                         DFA_node_list[curr_state] = {}
 
-                    if not contains_epsilon_transitions:
-                        possible_state_list = NFA_simulator(transition, state)
-                    else:
-                        possible_state_list = NFA_simulator_with_epsilons_and_knuckles(transition, state)
+                    possible_state_list = NFA_simulator(transition, state)
                     #print(possible_state_list)
                     flattened_states: set[str] = set()
                     for possible_state in possible_state_list:
@@ -179,28 +100,29 @@ def NFA_to_DFA_inator(curr_state: str = "0"):
 
                     if flattened_state_dict.get(transition) is not None:
                         # flattened_state_dict[transition] = ''.join(sorted(flattened_states + flattened_state_dict[transition]))
+                        #print(f"before: {flattened_state_dict[transition]}")
                         flattened_state_dict[transition].update(flattened_states)
+                        #print(f"after: {flattened_state_dict[transition]}")
                     else:
                         flattened_state_dict[transition] = flattened_states
 
     for dict_transtion in flattened_state_dict:
         flattened_str = '_'.join(sorted(flattened_state_dict[dict_transtion]))
+        #print(f"{flattened_str} try1")
         if DFA_node_list[curr_state].get(dict_transtion) is None:
-            DFA_node_list[curr_state][dict_transtion] = flattened_str
+            DFA_node_list[curr_state][dict_transtion] = {flattened_str}
+
             set_of_all_states.add(flattened_str)
-            #print(flattened_state_dict[dict_transtion])
+
             NFA_to_DFA_inator(flattened_str)
         
 
-# Handle start state in case of epsilon on start state
-if not contains_epsilon_transitions:
-    possible_start_states = NFA_simulator("", "0")
-else:
-    possible_start_states = NFA_simulator_with_epsilons_and_knuckles("", "0")
-
+possible_start_states = NFA_simulator("", "0")
+#print(possible_start_states)
 flattened_start_states = '_'.join(sorted(possible_start_states))
 
 NFA_to_DFA_inator(flattened_start_states)
+node_list = DFA_node_list
 #node_list = DFA_node_list
 
 number_of_states = len(set_of_all_states)
@@ -233,6 +155,7 @@ for state in set_of_all_states:
     for transition in sorted_transitions_list:
         if DFA_node_list.get(state) is not None and DFA_node_list[state].get(transition) is not None:
             to_state = DFA_node_list[state][transition]
+            to_state = to_state.pop()
             renamed_to_state = renamed_states.get(to_state)
             if renamed_to_state is not None:
                 to_state = renamed_to_state
