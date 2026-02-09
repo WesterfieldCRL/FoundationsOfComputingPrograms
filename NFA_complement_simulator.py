@@ -138,8 +138,10 @@ sorted_transitions_list = sorted(set_of_all_transitions)
 
 print_list = []
 
+sorted_state_list = sorted(set_of_all_states)
+
 # print transitions
-for state in set_of_all_states:
+for state in sorted_state_list:
 
     from_state = state
     renamed_from_state = renamed_states.get(from_state)
@@ -183,7 +185,7 @@ if print_sink is not None:
     print(number_of_states + 1)
 else:
     print(number_of_states)
-print_list.sort()
+#print_list.sort()
 
 print(len(print_list))
 
