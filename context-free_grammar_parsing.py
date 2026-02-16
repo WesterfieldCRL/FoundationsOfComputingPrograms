@@ -14,13 +14,13 @@ for i in range(num_rules):
 
     if len(production) > 1:
         # production is a pair of variables
-        if what_produces_variables.get((production[0], production[1])) is not None:
+        if what_produces_variables.get((production[0], production[1])) is None:
             what_produces_variables[(production[0], production[1])] = {head}
         else:
             what_produces_variables[(production[0], production[1])].add(head)
     else:
         # production is a symbol
-        if what_produces_characters.get(production) is not None:
+        if what_produces_characters.get(production) is None:
             what_produces_characters[production] = {head}
         else:
             what_produces_characters[production].add(head)
@@ -37,8 +37,8 @@ def CYK_parser(s: str) -> bool:
 
     # first row of table
     for j in range(str_len):
-        CFG_table[0][j].update(what_produces_characters[s[j]])
-    
+        CFG_table[0][j].update(what_produces_characters.get(s[j], set()))
+
     # second row of the table
     for j in range(str_len-1):
         first_variables = CFG_table[0][j]
